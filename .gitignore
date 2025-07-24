@@ -1,6 +1,14 @@
 # Python
+__pycache__
 __pycache__/
 *.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
 *$py.class
 *.so
 .Python
