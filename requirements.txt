@@ -1,0 +1,32 @@
+# Core dependencies
+ddgs>=6.0.0
+selenium>=4.15.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# AI and LLM integration
+openai>=1.0.0
+ollama>=0.1.0
+
+# Data processing
+pydantic>=2.5.0
+validators>=0.22.0
+
+# CLI and utilities
+click>=8.1.0
+python-dotenv>=1.0.0
+colorama>=0.4.6
+
+# Logging and monitoring
+structlog>=23.2.0
+
+# Testing (optional)
+pytest>=7.4.0
+pytest-mock>=3.12.0
+pytest-asyncio>=0.21.0
+
+# Development tools (optional)
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.7.0 
