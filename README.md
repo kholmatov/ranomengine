@@ -8,8 +8,9 @@
 - **Multi-domain Parsing**: Support for Cars.com, CarFax, and generic domain parsing
 - **AI-powered Extraction**: Fallback AI processing for unknown domains using OpenAI or Ollama
 - **Headless Web Scraping**: JavaScript-capable page fetching with Selenium
-- **API Integration**: Post structured goal data to Ranom API for case creation
+- **REST API Server**: Full FastAPI-based REST API with automatic documentation
 - **CLI Interface**: Command-line tool for testing and manual operations
+- **API Integration**: Post structured goal data to Ranom API for case creation
 - **Modular Architecture**: Extensible design for adding new parsers and AI models
 
 ## 🏗️ Architecture
@@ -48,9 +49,18 @@ ranomengine/
 │   ├── dom_fetcher.py         # Selenium web scraping
 │   └── goal_builder.py        # Complete pipeline orchestration
 │
+├── docs/
+│   └── API.md                 # REST API documentation
+│
+├── examples/
+│   └── api_client.py          # Python API client example
+│
 ├── models.py                  # Data models and schemas
 ├── config.py                  # Configuration management
 ├── cli.py                     # Command-line interface
+├── api.py                     # REST API server
+├── test_basic.py              # Basic test suite
+├── activate.sh                # Environment activation script
 └── requirements.txt           # Dependencies
 ```
 
@@ -97,10 +107,16 @@ python cli.py process 5TDGZRBHXMS103005
 python cli.py process "https://www.cars.com/vehicledetail/12345/"
 ```
 
-**Fetch and parse a page**:
+**Start the REST API server**:
 ```bash
-python cli.py fetch-page "https://www.cars.com/vehicledetail/12345/"
-python cli.py parse-page "https://www.cars.com/vehicledetail/12345/"
+python api.py
+# API available at: http://localhost:8000
+# Interactive docs at: http://localhost:8000/docs
+```
+
+**Use the Python API client**:
+```bash
+python examples/api_client.py
 ```
 
 ## ⚙️ Configuration
@@ -169,6 +185,58 @@ ollama serve
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
 ```
+
+## 🚀 REST API
+
+### Start the API Server
+
+```bash
+# Activate environment and start server
+source activate.sh
+python api.py
+
+# Server starts at http://localhost:8000
+# Interactive API docs at http://localhost:8000/docs
+```
+
+### API Endpoints
+
+- **`GET /health`** - Health check
+- **`GET /config`** - Configuration info
+- **`POST /validate/vin`** - Validate VIN format
+- **`POST /search/vin`** - Search for VIN listings
+- **`POST /fetch/page`** - Fetch webpage content
+- **`POST /parse/page`** - Parse vehicle listing
+- **`POST /extract/ai`** - AI-powered extraction
+- **`POST /process/complete`** - Full pipeline processing
+- **`POST /process/vin`** - Process VIN (convenience)
+- **`POST /process/url`** - Process URL (convenience)
+
+### Quick API Example
+
+```bash
+# Health check
+curl -X GET "http://localhost:8000/health"
+
+# Validate VIN
+curl -X POST "http://localhost:8000/validate/vin" \
+  -H "Content-Type: application/json" \
+  -d '{"vin": "5TDGZRBHXMS103005"}'
+
+# Process VIN through complete pipeline
+curl -X POST "http://localhost:8000/process/vin?vin=5TDGZRBHXMS103005&create_case=false"
+```
+
+### Python Client
+
+```python
+from examples.api_client import RanomEngineClient
+
+client = RanomEngineClient()
+print(client.validate_vin("5TDGZRBHXMS103005"))
+```
+
+**📖 Full API Documentation**: [docs/API.md](docs/API.md)
 
 ## 🔧 CLI Commands
 
