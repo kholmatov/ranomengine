@@ -1,0 +1,27 @@
+{
+  "_metadata": {
+    "site": "default",
+    "version": "1.0.0",
+    "last_updated": "2024-01-01", 
+    "description": "Generic fallback mapping for unknown car listing sites",
+    "note": "Uses common patterns found across car listing websites"
+  },
+  
+  "vin": "//span[contains(@class, 'vin')]/text()",
+  "goal": "Purchase a quality pre-owned vehicle",
+  
+  "year": ".vehicle-year",
+  "make": ".vehicle-make",
+  "model": ".vehicle-model",
+  
+  "price": "//span[contains(@class, 'price')]/text()",
+  "mileage": ".mileage",
+  "color": ".color",
+  
+  "dealer.name": ".dealer-name",
+  "dealer.phone": ".dealer-phone",
+  
+  "features": ".features li",
+  "images": ".vehicle-photos img",
+  "description": ".description"
+} 

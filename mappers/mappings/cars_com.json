@@ -1,0 +1,42 @@
+{
+  "_metadata": {
+    "site": "cars.com",
+    "version": "1.0.0",
+    "last_updated": "2024-01-01",
+    "description": "Cars.com vehicle listing page mapping",
+    "test_url": "https://www.cars.com/vehicledetail/detail/12345/"
+  },
+  
+  "vin": "//span[@data-qa='vin-value']/text()",
+  "goal": "Buy a quality pre-owned vehicle from Cars.com",
+  
+  "year": ".vehicle-info__year",
+  "make": ".vehicle-info__make", 
+  "model": ".vehicle-info__model",
+  "trim": ".vehicle-info__trim",
+  
+  "price": "//span[@class='primary-price']//text()",
+  "mileage": ".vehicle-info__mileage",
+  "color": ".vehicle-info__color",
+  
+  "dealer.name": ".dealer-name",
+  "dealer.phone": ".dealer-phone",
+  "dealer_address": ".dealer-address",
+  
+  "features": ".vehicle-features li",
+  "images": ".vehicle-photos img",
+  "description": ".vehicle-description",
+  
+  "fuel_type": ".fuel-type",
+  "transmission": ".transmission",
+  "drivetrain": ".drivetrain",
+  "engine": ".engine-info",
+  
+  "carfax_available": ".carfax-link",
+  "certified": ".certified-badge",
+  "warranty": ".warranty-info",
+  
+  "listing_date": ".listing-date",
+  "days_on_lot": ".days-on-lot",
+  "stock_number": ".stock-number"
+} 

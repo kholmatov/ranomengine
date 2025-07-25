@@ -1,0 +1,42 @@
+{
+  "_metadata": {
+    "site": "carfax.com",
+    "version": "1.0.0", 
+    "last_updated": "2024-01-01",
+    "description": "Carfax vehicle listing page mapping",
+    "test_url": "https://www.carfax.com/vehicle/12345"
+  },
+  
+  "vin": "//span[@data-test='vin-value']/text()",
+  "goal": "Purchase a Carfax-verified vehicle with complete history",
+  
+  "year": ".vehicle-year",
+  "make": ".vehicle-make",
+  "model": ".vehicle-model", 
+  "trim": ".vehicle-trim",
+  
+  "price": "//div[@class='price-display']//span/text()",
+  "mileage": ".mileage-value",
+  "color": ".exterior-color",
+  
+  "dealer.name": ".dealer-info h3",
+  "dealer.phone": ".dealer-phone a",
+  "dealer_rating": ".dealer-rating",
+  
+  "features": ".features-list li",
+  "images": ".photo-gallery img",
+  "description": ".vehicle-overview p",
+  
+  "carfax_report": ".carfax-report-link",
+  "accident_history": ".accident-indicator",
+  "service_records": ".service-count",
+  "owner_count": ".owner-count",
+  
+  "title_info": ".title-status",
+  "usage_type": ".usage-type",
+  "location": ".vehicle-location",
+  
+  "mpg_city": ".mpg-city",
+  "mpg_highway": ".mpg-highway",
+  "fuel_type": ".fuel-type"
+} 

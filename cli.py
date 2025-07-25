@@ -29,6 +29,7 @@ from services.goal_builder import GoalBuilderService
 from parsers.cars_com_parser import CarsComParser
 from parsers.generic_parser import GenericParser
 from ai.goal_extractor import AIGoalExtractor
+from mappers.goal_mapper import GoalMapper
 from models import VehicleData
 
 # Configure logging
@@ -431,6 +432,187 @@ def validate_vin(vin: str):
     else:
         print_error(f"VIN '{vin}' is invalid")
         click.echo("VIN must be 17 characters, no I, O, or Q letters")
+
+
+# ========================================
+# RanomGoalMap Commands
+# ========================================
+
+@cli.command('list-mappings')
+def list_mappings():
+    """List all available site mappings"""
+    print_info("Available Site Mappings")
+    click.echo("=" * 40)
+    
+    try:
+        mapper = GoalMapper()
+        sites = mapper.get_available_sites()
+        
+        if not sites:
+            print_warning("No mappings found!")
+            return
+        
+        for site_id in sorted(sites):
+            info = mapper.get_mapping_info(site_id)
+            if info:
+                validation = info['validation']
+                status = "✅ Valid" if validation['valid'] else "❌ Invalid"
+                click.echo(f"📋 {site_id}")
+                click.echo(f"   Status: {status}")
+                click.echo(f"   Fields: {info['field_count']}")
+                if validation.get('errors'):
+                    click.echo(f"   Errors: {len(validation['errors'])}")
+                click.echo()
+    
+    except Exception as e:
+        print_error(f"Error: {e}")
+
+
+@cli.command('validate-mapping')
+@click.argument('site_id')
+def validate_mapping(site_id):
+    """Validate a mapping configuration"""
+    print_info(f"Validating mapping: {site_id}")
+    click.echo("=" * 40)
+    
+    try:
+        mapper = GoalMapper()
+        validation = mapper.validate_mapping(site_id)
+        
+        if validation['valid']:
+            print_success("Mapping is valid!")
+            click.echo(f"📊 Fields: {validation['fields_count']}")
+            
+            if validation.get('warnings'):
+                click.echo("\n⚠️ Warnings:")
+                for warning in validation['warnings']:
+                    click.echo(f"  • {warning}")
+        else:
+            print_error("Mapping has errors:")
+            for error in validation['errors']:
+                click.echo(f"  • {error}")
+            
+            if validation.get('warnings'):
+                click.echo("\n⚠️ Additional warnings:")
+                for warning in validation['warnings']:
+                    click.echo(f"  • {warning}")
+    
+    except Exception as e:
+        print_error(f"Error: {e}")
+
+
+@cli.command('map-page')
+@click.option('--url', help='URL to fetch and map')
+@click.option('--html-file', help='Local HTML file to map')
+@click.option('--site-id', required=True, help='Site mapping to use (e.g., cars_com, carfax)')
+@click.option('--output', '-o', help='Output file for results')
+@click.option('--json', 'output_json', is_flag=True, help='Output as JSON')
+@click.option('--fallback-ai', is_flag=True, help='Use AI fallback if mapping fails')
+def map_page(url, html_file, site_id, output, output_json, fallback_ai):
+    """Extract vehicle data using DOM mapping"""
+    
+    if not url and not html_file:
+        print_error("Must provide either --url or --html-file")
+        return
+    
+    if url and html_file:
+        print_error("Cannot use both --url and --html-file")
+        return
+    
+    print_info(f"DOM Mapping Extraction: {site_id}")
+    click.echo("=" * 50)
+    
+    try:
+        # Get HTML content
+        if url:
+            click.echo(f"🌐 Fetching: {url}")
+            
+            with DOMFetcherService() as fetcher:
+                fetch_result = fetcher.fetch_page(url)
+                
+                if not fetch_result.success:
+                    print_error(f"Failed to fetch page: {fetch_result.error}")
+                    return
+                
+                html_content = fetch_result.html
+                print_success(f"Fetched {len(html_content):,} characters")
+        else:
+            click.echo(f"📄 Reading: {html_file}")
+            with open(html_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            url = f"file://{html_file}"
+        
+        # Apply mapping
+        click.echo(f"🔧 Applying mapping: {site_id}")
+        mapper = GoalMapper()
+        result = mapper.extract_from_html(html_content, site_id, url or "")
+        
+        click.echo(f"\n📊 Mapping Results:")
+        click.echo(f"   Success: {'✅' if result.success else '❌'}")
+        click.echo(f"   Fields mapped: {result.fields_mapped}/{result.fields_total}")
+        click.echo(f"   Confidence: {result.confidence:.2f}")
+        click.echo(f"   Fallback needed: {'Yes' if result.fallback_needed else 'No'}")
+        
+        if result.errors:
+            click.echo(f"\n⚠️ Errors:")
+            for error in result.errors:
+                click.echo(f"   • {error}")
+        
+        # Show extracted data
+        if result.extracted_data:
+            click.echo(f"\n📋 Extracted Data:")
+            for key, value in result.extracted_data.items():
+                if isinstance(value, dict):
+                    click.echo(f"   {key}:")
+                    for subkey, subvalue in value.items():
+                        click.echo(f"     {subkey}: {subvalue}")
+                elif isinstance(value, list):
+                    click.echo(f"   {key}: [{len(value)} items]")
+                    if value:
+                        click.echo(f"     First: {value[0]}")
+                else:
+                    click.echo(f"   {key}: {value}")
+        
+        # AI Fallback if requested and needed
+        if fallback_ai and result.fallback_needed:
+            click.echo(f"\n🧠 Applying AI fallback...")
+            
+            extractor = AIGoalExtractor()
+            ai_result = extractor.extract_from_html(html_content, url or "", result.extracted_data)
+            
+            if ai_result.success:
+                print_success(f"AI extraction successful! (Confidence: {ai_result.confidence:.2f})")
+                # Merge results
+                final_data = {**result.extracted_data, **ai_result.extracted_data}
+                result.extracted_data = final_data
+                result.confidence = max(result.confidence, ai_result.confidence)
+            else:
+                print_error(f"AI fallback failed: {ai_result.error}")
+        
+        # Convert to vehicle data and goal JSON
+        if result.extracted_data:
+            vehicle_data = mapper.to_vehicle_data(result.extracted_data)
+            if vehicle_data:
+                goal_json = vehicle_data.to_goal_json()
+                
+                click.echo(f"\n🎯 Goal JSON Preview:")
+                click.echo(f"   Goal: {goal_json.get('goal', 'N/A')}")
+                click.echo(f"   Vehicle: {goal_json.get('year', '')} {goal_json.get('make', '')} {goal_json.get('model', '')}")
+                
+                # Save results
+                if output:
+                    output_data = goal_json if output_json else result.extracted_data
+                    with open(output, 'w') as f:
+                        json.dump(output_data, f, indent=2)
+                    print_success(f"Results saved to: {output}")
+                
+                # Show full JSON if requested
+                if output_json and not output:
+                    click.echo(f"\n📄 Full JSON:")
+                    click.echo(json.dumps(goal_json, indent=2))
+    
+    except Exception as e:
+        print_error(f"Error: {e}")
 
 
 if __name__ == '__main__':

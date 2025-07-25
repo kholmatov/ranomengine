@@ -24,6 +24,8 @@ from services.goal_builder import GoalBuilderService
 from parsers.cars_com_parser import CarsComParser
 from parsers.generic_parser import GenericParser
 from ai.goal_extractor import AIGoalExtractor
+from mappers.goal_mapper import GoalMapper, MappingResult
+from mappingstudio.api.endpoints import router as studio_router
 from models import VehicleData, SearchTrace
 
 # Set up logging
@@ -72,6 +74,40 @@ class VINValidationRequest(BaseModel):
     vin: str = Field(..., description="VIN number to validate")
 
 
+# RanomGoalMap Request/Response Models
+class MappedParseRequest(BaseModel):
+    url: Optional[str] = Field(default=None, description="URL to fetch and map")
+    html: Optional[str] = Field(default=None, description="HTML content to map")
+    site_id: str = Field(..., description="Site mapping identifier (e.g., cars_com, carfax)")
+    fallback_ai: bool = Field(default=True, description="Use AI fallback if mapping confidence is low")
+
+
+class MappedParseResponse(BaseModel):
+    success: bool
+    mapping_used: str
+    fields_mapped: int
+    fields_total: int
+    confidence: float
+    fallback_needed: bool
+    ai_fallback_used: bool = False
+    extracted_data: Optional[Dict[str, Any]] = None
+    goal_json: Optional[Dict[str, Any]] = None
+    errors: Optional[List[str]] = None
+
+
+class MappingValidationResponse(BaseModel):
+    valid: bool
+    site_id: str
+    fields_count: int
+    errors: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+
+
+class AvailableMappingsResponse(BaseModel):
+    sites: List[str]
+    mapping_info: Dict[str, Dict[str, Any]]
+
+
 # Response Models
 class APIResponse(BaseModel):
     success: bool
@@ -101,6 +137,7 @@ async def lifespan(app: FastAPI):
     try:
         services["vin_search"] = VINSearchService()
         services["goal_builder"] = GoalBuilderService()
+        services["goal_mapper"] = GoalMapper()
         logger.info("Services initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize services: {e}")
@@ -133,6 +170,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include mapping studio router
+app.include_router(studio_router)
+
 
 # Dependency for services
 def get_vin_search() -> VINSearchService:
@@ -141,6 +181,10 @@ def get_vin_search() -> VINSearchService:
 
 def get_goal_builder() -> GoalBuilderService:
     return services["goal_builder"]
+
+
+def get_goal_mapper() -> GoalMapper:
+    return services["goal_mapper"]
 
 
 # Endpoints
@@ -474,6 +518,139 @@ async def process_url(
         create_case=create_case
     )
     return await process_complete(request, BackgroundTasks(), goal_builder)
+
+
+# ========================================
+# RanomGoalMap Endpoints
+# ========================================
+
+@app.get("/mappings", response_model=AvailableMappingsResponse, tags=["Mapping"])
+async def get_available_mappings(
+    mapper: GoalMapper = Depends(get_goal_mapper)
+):
+    """Get list of available site mappings"""
+    try:
+        sites = mapper.get_available_sites()
+        mapping_info = {}
+        
+        for site_id in sites:
+            info = mapper.get_mapping_info(site_id)
+            if info:
+                mapping_info[site_id] = info
+        
+        return AvailableMappingsResponse(
+            sites=sites,
+            mapping_info=mapping_info
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting mappings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get mappings: {str(e)}")
+
+
+@app.get("/mappings/{site_id}/validate", response_model=MappingValidationResponse, tags=["Mapping"])
+async def validate_mapping(
+    site_id: str,
+    mapper: GoalMapper = Depends(get_goal_mapper)
+):
+    """Validate a specific mapping configuration"""
+    try:
+        validation = mapper.validate_mapping(site_id)
+        
+        return MappingValidationResponse(
+            valid=validation['valid'],
+            site_id=site_id,
+            fields_count=validation['fields_count'],
+            errors=validation.get('errors'),
+            warnings=validation.get('warnings')
+        )
+        
+    except Exception as e:
+        logger.error(f"Error validating mapping {site_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to validate mapping: {str(e)}")
+
+
+@app.post("/parse/mapped", response_model=MappedParseResponse, tags=["Parsing"])
+async def parse_with_mapping(
+    request: MappedParseRequest,
+    background_tasks: BackgroundTasks,
+    mapper: GoalMapper = Depends(get_goal_mapper),
+    goal_builder: GoalBuilderService = Depends(get_goal_builder)
+):
+    """Extract vehicle data using DOM mapping with optional AI fallback"""
+    try:
+        if not request.url and not request.html:
+            raise HTTPException(status_code=400, detail="Must provide either url or html")
+            
+        if request.url and request.html:
+            raise HTTPException(status_code=400, detail="Cannot provide both url and html")
+        
+        # Get HTML content
+        if request.url:
+            logger.info(f"Fetching URL for mapping: {request.url}")
+            # Use the DOMFetcher from goal_builder
+            with goal_builder.dom_fetcher as fetcher:
+                fetch_result = fetcher.fetch_page(request.url)
+                
+                if not fetch_result.success:
+                    raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {fetch_result.error}")
+                
+                html_content = fetch_result.html
+                source_url = request.url
+        else:
+            html_content = request.html
+            source_url = ""
+        
+        # Apply mapping
+        logger.info(f"Applying mapping: {request.site_id}")
+        mapping_result = mapper.extract_from_html(html_content, request.site_id, source_url)
+        
+        ai_fallback_used = False
+        final_extracted_data = mapping_result.extracted_data
+        final_confidence = mapping_result.confidence
+        
+        # Apply AI fallback if needed and requested
+        if request.fallback_ai and mapping_result.fallback_needed:
+            logger.info("Applying AI fallback due to low mapping confidence")
+            
+            ai_result = goal_builder.ai_extractor.extract_from_html(
+                html_content, 
+                source_url, 
+                mapping_result.extracted_data
+            )
+            
+            if ai_result.success:
+                # Merge mapping and AI results
+                final_extracted_data = {**mapping_result.extracted_data, **ai_result.extracted_data}
+                final_confidence = max(mapping_result.confidence, ai_result.confidence)
+                ai_fallback_used = True
+                logger.info(f"AI fallback successful, combined confidence: {final_confidence:.2f}")
+        
+        # Convert to goal JSON if we have data
+        goal_json = None
+        if final_extracted_data:
+            vehicle_data = mapper.to_vehicle_data(final_extracted_data)
+            if vehicle_data:
+                goal_json = vehicle_data.to_goal_json()
+        
+        return MappedParseResponse(
+            success=mapping_result.success,
+            mapping_used=mapping_result.mapping_used,
+            fields_mapped=mapping_result.fields_mapped,
+            fields_total=mapping_result.fields_total,
+            confidence=final_confidence,
+            fallback_needed=mapping_result.fallback_needed,
+            ai_fallback_used=ai_fallback_used,
+            extracted_data=final_extracted_data,
+            goal_json=goal_json,
+            errors=mapping_result.errors
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Mapping extraction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Mapping extraction failed: {str(e)}")
 
 
 # Error handlers
