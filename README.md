@@ -20,6 +20,7 @@ A powerful visual tool for creating and managing DOM mapping configurations with
 - **💾 Schema Management**: Version-controlled mapping configurations with validation
 - **🧪 Automated Testing**: Test mappings against multiple URLs
 - **📊 Performance Analytics**: Detailed metrics and improvement recommendations
+- **🖱️ Visual Editor**: Interactive HTML interface for click-to-map DOM elements
 
 ### 🚀 **Studio Quick Start**
 ```bash
@@ -32,11 +33,28 @@ python api.py
 # Run Studio demo
 python demo_studio.py
 
-# Access Studio API
-curl http://localhost:8000/mappingstudio/fields
+# Launch Visual Editor
+python demo_visual_editor.py
+
+# Direct access URLs
+# Visual Editor: http://localhost:8000/mappingstudio/editor
+# API Docs: http://localhost:8000/docs
 ```
 
+### 🎨 **NEW: Visual Mapping Editor**
+**Revolutionary no-code DOM mapping interface!**
+
+- **🖱️ Click-to-Map**: Click on webpage elements to automatically generate selectors
+- **🧠 AI Suggestions**: Get intelligent selector recommendations with confidence scores  
+- **👁️ Live Preview**: Real-time goal.json generation and validation
+- **⚔️ AI Comparison**: Side-by-side accuracy analysis with AI extraction
+- **💾 Schema Export**: Save and reuse mappings across similar websites
+- **🎯 Professional UI**: Accessible to non-programmers with guided workflow
+
+**Access the Visual Editor at:** `http://localhost:8000/mappingstudio/editor`
+
 ### 📡 **Studio API Endpoints**
+- `GET /mappingstudio/editor` - **Visual mapping editor interface**
 - `POST /mappingstudio/suggest` - Get AI selector suggestions
 - `POST /mappingstudio/preview` - Preview mapping extraction
 - `POST /mappingstudio/compare` - Compare mapping vs AI results

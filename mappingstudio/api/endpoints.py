@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from services.dom_fetcher import DOMFetcherService
@@ -593,4 +594,23 @@ async def test_selector(
 
 
 # Import time for metadata
-import time 
+import time
+
+
+@router.get("/editor", response_class=HTMLResponse)
+async def get_visual_editor():
+    """Serve the visual mapping editor HTML interface"""
+    try:
+        editor_path = Path(__file__).parent.parent / "ui" / "editor.html"
+        
+        if not editor_path.exists():
+            raise HTTPException(status_code=404, detail="Visual editor not found")
+        
+        with open(editor_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        return HTMLResponse(content=html_content)
+        
+    except Exception as e:
+        logger.error(f"Failed to serve visual editor: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to load editor: {str(e)}") 

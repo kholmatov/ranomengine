@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RanomMappingStudio - Visual DOM-to-Goal Mapping Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .url-input {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            width: 400px;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+
+        .left-panel {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #e1e5e9;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .center-panel {
+            flex: 1;
+            background: white;
+            position: relative;
+        }
+
+        .right-panel {
+            width: 400px;
+            background: white;
+            border-left: 1px solid #e1e5e9;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .field-group {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .field-group:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .field-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .field-name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.9rem;
+        }
+
+        .field-type {
+            font-size: 0.75rem;
+            color: #718096;
+            background: #f7fafc;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-left: auto;
+        }
+
+        .field-description {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-bottom: 0.75rem;
+        }
+
+        .selector-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .selector-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            color: #4a5568;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+
+        .btn-pick {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .btn-pick:hover {
+            background: #5a67d8;
+        }
+
+        .btn-ai {
+            background: #ed8936;
+            color: white;
+            border-color: #ed8936;
+        }
+
+        .btn-ai:hover {
+            background: #dd7724;
+        }
+
+        .btn-pick.active {
+            background: #38a169;
+            border-color: #38a169;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(56, 161, 105, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(56, 161, 105, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 161, 105, 0); }
+        }
+
+        .iframe-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .iframe-placeholder {
+            text-align: center;
+            color: #718096;
+        }
+
+        .iframe-placeholder h3 {
+            margin-bottom: 0.5rem;
+            color: #4a5568;
+        }
+
+        #website-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-left-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .preview-section {
+            margin-bottom: 2rem;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .json-preview {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .comparison-view {
+            display: none;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .comparison-header {
+            display: flex;
+            background: #edf2f7;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .comparison-column {
+            flex: 1;
+            padding: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .comparison-content {
+            display: flex;
+            max-height: 300px;
+        }
+
+        .comparison-side {
+            flex: 1;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            overflow-y: auto;
+        }
+
+        .comparison-side:first-child {
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-success { background: #38a169; }
+        .status-warning { background: #ed8936; }
+        .status-error { background: #e53e3e; }
+        .status-info { background: #3182ce; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 0.25rem;
+        }
+
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success { background: #38a169; }
+        .notification.error { background: #e53e3e; }
+        .notification.info { background: #3182ce; }
+
+        .field-group.has-selector {
+            border-color: #38a169;
+            background: #f0fff4;
+        }
+
+        .field-group.picking {
+            border-color: #ed8936;
+            background: #fffaf0;
+            box-shadow: 0 0 0 3px rgba(237, 137, 54, 0.1);
+        }
+
+        .confidence-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .confidence-high { background: #c6f6d5; color: #22543d; }
+        .confidence-medium { background: #fed7d7; color: #742a2a; }
+        .confidence-low { background: #fbb6ce; color: #702459; }
+
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .success-message {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        @media (max-width: 1200px) {
+            .left-panel { width: 300px; }
+            .right-panel { width: 350px; }
+            .url-input { width: 300px; }
+        }
+
+        @media (max-width: 900px) {
+            .main-container { flex-direction: column; }
+            .left-panel, .right-panel { width: 100%; height: 300px; }
+            .center-panel { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ RanomMappingStudio - Visual Mapping Editor</h1>
+        <div class="header-controls">
+            <input type="url" id="url-input" class="url-input" placeholder="Enter website URL (e.g., https://www.cars.com/vehicledetail/12345/)" value="">
+            <button id="load-btn" class="btn">📄 Load Page</button>
+            <button id="save-btn" class="btn btn-primary">💾 Save Schema</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Left Panel: Field Mapper -->
+        <div class="left-panel">
+            <div class="panel-title">
+                🎯 Goal.json Field Mapper
+            </div>
+            
+            <div class="help-text">
+                <strong>How to use:</strong><br>
+                1. Enter a car listing URL above and click "Load Page"<br>
+                2. Click "Pick from page" to select elements<br>
+                3. Use "AI Suggest" for automatic recommendations<br>
+                4. Preview results in the right panel
+            </div>
+
+            <div id="fields-container">
+                <!-- Dynamic field groups will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Center Panel: IFrame Preview -->
+        <div class="center-panel">
+            <div class="iframe-container">
+                <div class="iframe-placeholder">
+                    <h3>🌐 Website Preview</h3>
+                    <p>Enter a URL above to load the page for mapping</p>
+                    <p><small>Click on elements after clicking "Pick from page" to map them to fields</small></p>
+                </div>
+                <iframe id="website-iframe" sandbox="allow-same-origin allow-scripts"></iframe>
+                <div id="loading-overlay" class="loading-overlay" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Output Preview -->
+        <div class="right-panel">
+            <div class="panel-title">
+                📊 Output Preview
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="fields-mapped">0</div>
+                    <div class="stat-label">Fields Mapped</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="confidence-score">0%</div>
+                    <div class="stat-label">Confidence</div>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <div class="preview-actions">
+                    <button id="test-mapping-btn" class="btn-small">🧪 Test Mapping</button>
+                    <button id="compare-ai-btn" class="btn-small">🤖 Compare with AI</button>
+                    <button id="get-suggestions-btn" class="btn-small btn-ai">💡 Get AI Suggestions</button>
+                </div>
+
+                <div id="json-preview-container">
+                    <h4>Goal.json Preview:</h4>
+                    <div id="json-preview" class="json-preview">
+                        {
+                          "goal": "Define your mapping to see results here",
+                          "instructions": "Use the left panel to map fields"
+                        }
+                    </div>
+                </div>
+
+                <div id="comparison-view" class="comparison-view">
+                    <div class="comparison-header">
+                        <div class="comparison-column">Your Mapping</div>
+                        <div class="comparison-column">AI Result</div>
+                    </div>
+                    <div class="comparison-content">
+                        <div id="mapping-result" class="comparison-side"></div>
+                        <div id="ai-result" class="comparison-side"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="help-text">
+                <strong>💡 Pro Tips:</strong><br>
+                • Use specific selectors for better accuracy<br>
+                • Test your mapping before saving<br>
+                • Compare with AI to find missing fields<br>
+                • Save schemas for reuse across similar sites
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state management
+        const AppState = {
+            currentUrl: '',
+            mappingConfig: { goal: 'Buy a quality pre-owned vehicle' },
+            fieldSchema: {},
+            isPickingMode: false,
+            currentPickingField: null,
+            lastPreviewResult: null,
+            apiBaseUrl: window.location.origin
+        };
+
+        // Goal.json field definitions
+        const GOAL_FIELDS = {
+            'vin': {
+                name: 'VIN',
+                type: 'string',
+                description: 'Vehicle Identification Number (17 characters)',
+                pattern: '[A-HJ-NPR-Z0-9]{17}',
+                required: true
+            },
+            'year': {
+                name: 'Year',
+                type: 'integer',
+                description: 'Vehicle year (4 digits)',
+                pattern: '(19|20)\\d{2}',
+                required: true
+            },
+            'make': {
+                name: 'Make',
+                type: 'string',
+                description: 'Vehicle manufacturer (e.g., Toyota, Honda)',
+                required: true
+            },
+            'model': {
+                name: 'Model',
+                type: 'string',
+                description: 'Vehicle model name (e.g., Camry, Civic)',
+                required: true
+            },
+            'trim': {
+                name: 'Trim',
+                type: 'string',
+                description: 'Vehicle trim level (e.g., XLE, LX, Sport)',
+                required: false
+            },
+            'price': {
+                name: 'Price',
+                type: 'integer',
+                description: 'Vehicle price in dollars',
+                pattern: '\\$?[\\d,]+',
+                required: true
+            },
+            'mileage': {
+                name: 'Mileage',
+                type: 'integer',
+                description: 'Vehicle mileage in miles',
+                pattern: '[\\d,]+\\s*mi',
+                required: true
+            },
+            'color': {
+                name: 'Color',
+                type: 'string',
+                description: 'Vehicle exterior color',
+                required: false
+            },
+            'dealer_name': {
+                name: 'Dealer Name',
+                type: 'string',
+                description: 'Dealership or seller name',
+                required: false
+            },
+            'dealer_phone': {
+                name: 'Dealer Phone',
+                type: 'string',
+                description: 'Dealer contact phone number',
+                pattern: '\\(?\\d{3}\\)?[-\.\\s]?\\d{3}[-\.\\s]?\\d{4}',
+                required: false
+            },
+            'features': {
+                name: 'Features',
+                type: 'array',
+                description: 'List of vehicle features and options',
+                required: false
+            },
+            'images': {
+                name: 'Images',
+                type: 'array',
+                description: 'Vehicle image URLs',
+                required: false
+            },
+            'description': {
+                name: 'Description',
+                type: 'string',
+                description: 'Vehicle description text',
+                required: false
+            }
+        };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            console.log('🚀 Initializing RanomMappingStudio Visual Editor');
+            
+            // Load field schema from backend
+            loadFieldSchema();
+            
+            // Render field groups
+            renderFieldGroups();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Set default URL for testing
+            document.getElementById('url-input').value = 'https://www.cars.com/vehicledetail/detail/5UXFX4C51Y5Z12345/';
+        }
+
+        async function loadFieldSchema() {
+            try {
+                const response = await fetch(`${AppState.apiBaseUrl}/mappingstudio/fields`);
+                if (response.ok) {
+                    const data = await response.json();
+                    AppState.fieldSchema = data.fields || GOAL_FIELDS;
+                } else {
+                    console.warn('Failed to load field schema from API, using defaults');
+                    AppState.fieldSchema = GOAL_FIELDS;
+                }
+            } catch (error) {
+                console.warn('Error loading field schema:', error);
+                AppState.fieldSchema = GOAL_FIELDS;
+            }
+        }
+
+        function renderFieldGroups() {
+            const container = document.getElementById('fields-container');
+            container.innerHTML = '';
+
+            // Sort fields by importance
+            const fieldOrder = ['vin', 'price', 'year', 'make', 'model', 'mileage', 'color', 'dealer_name', 'dealer_phone', 'features', 'images', 'description'];
+            const sortedFields = Object.keys(AppState.fieldSchema).sort((a, b) => {
+                const aIndex = fieldOrder.indexOf(a);
+                const bIndex = fieldOrder.indexOf(b);
+                if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+                if (aIndex === -1) return 1;
+                if (bIndex === -1) return -1;
+                return aIndex - bIndex;
+            });
+
+            sortedFields.forEach(fieldId => {
+                const field = AppState.fieldSchema[fieldId];
+                const fieldGroup = createFieldGroup(fieldId, field);
+                container.appendChild(fieldGroup);
+            });
+        }
+
+        function createFieldGroup(fieldId, field) {
+            const div = document.createElement('div');
+            div.className = 'field-group';
+            div.dataset.fieldId = fieldId;
+
+            const currentSelector = AppState.mappingConfig[fieldId] || '';
+            const hasSelector = currentSelector.length > 0;
+            
+            if (hasSelector) {
+                div.classList.add('has-selector');
+            }
+
+            div.innerHTML = `
+                <div class="field-header">
+                    <span class="field-name">${field.name}</span>
+                    <span class="field-type">${field.type}</span>
+                </div>
+                <div class="field-description">${field.description}</div>
+                <input type="text" class="selector-input" 
+                       placeholder="CSS selector or XPath..." 
+                       value="${currentSelector}"
+                       data-field="${fieldId}">
+                <div class="field-actions">
+                    <button class="btn-small btn-pick" data-field="${fieldId}">
+                        📍 Pick from page
+                    </button>
+                    <button class="btn-small btn-ai" data-field="${fieldId}">
+                        🤖 AI Suggest
+                    </button>
+                    <button class="btn-small" onclick="clearField('${fieldId}')">
+                        🗑️ Clear
+                    </button>
+                </div>
+                <div class="field-status" id="status-${fieldId}"></div>
+            `;
+
+            return div;
+        }
+
+        function setupEventListeners() {
+            // URL input and load button
+            document.getElementById('load-btn').addEventListener('click', loadWebsite);
+            document.getElementById('url-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') loadWebsite();
+            });
+
+            // Save button
+            document.getElementById('save-btn').addEventListener('click', saveSchema);
+
+            // Preview buttons
+            document.getElementById('test-mapping-btn').addEventListener('click', testMapping);
+            document.getElementById('compare-ai-btn').addEventListener('click', compareWithAI);
+            document.getElementById('get-suggestions-btn').addEventListener('click', getAISuggestions);
+
+            // Selector input changes
+            document.addEventListener('input', function(e) {
+                if (e.target.classList.contains('selector-input')) {
+                    const fieldId = e.target.dataset.field;
+                    AppState.mappingConfig[fieldId] = e.target.value;
+                    updateFieldStatus(fieldId);
+                    updateStats();
+                }
+            });
+
+            // Pick from page buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn-pick')) {
+                    const fieldId = e.target.dataset.field;
+                    togglePickingMode(fieldId);
+                }
+                
+                if (e.target.classList.contains('btn-ai')) {
+                    const fieldId = e.target.dataset.field;
+                    getFieldSuggestion(fieldId);
+                }
+            });
+        }
+
+        async function loadWebsite() {
+            const url = document.getElementById('url-input').value.trim();
+            if (!url) {
+                showNotification('Please enter a valid URL', 'error');
+                return;
+            }
+
+            AppState.currentUrl = url;
+            const iframe = document.getElementById('website-iframe');
+            const placeholder = document.querySelector('.iframe-placeholder');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            
+            showLoading(true);
+            placeholder.style.display = 'none';
+            
+            try {
+                // Show iframe and start loading
+                iframe.style.display = 'block';
+                iframe.src = url;
+                
+                // Handle iframe load
+                iframe.onload = function() {
+                    showLoading(false);
+                    showNotification('Page loaded successfully! Ready for mapping.', 'success');
+                    setupIframeInteraction();
+                };
+                
+                iframe.onerror = function() {
+                    showLoading(false);
+                    showNotification('Failed to load page. Some sites may not allow iframe embedding.', 'error');
+                };
+                
+            } catch (error) {
+                showLoading(false);
+                showNotification('Error loading page: ' + error.message, 'error');
+            }
+        }
+
+        function setupIframeInteraction() {
+            const iframe = document.getElementById('website-iframe');
+            
+            try {
+                // Note: Due to CORS restrictions, direct iframe manipulation may be limited
+                // This is a simplified version - in production, you might need a browser extension
+                // or proxy server to handle cross-origin restrictions
+                
+                iframe.addEventListener('load', function() {
+                    console.log('Iframe loaded, setting up interaction...');
+                    
+                    // Try to access iframe content (may fail due to CORS)
+                    try {
+                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        if (iframeDoc) {
+                            setupElementSelection(iframeDoc);
+                        }
+                    } catch (e) {
+                        console.warn('Cannot access iframe content due to CORS restrictions:', e);
+                        showNotification('Note: Some sites may not allow element selection due to security restrictions.', 'info');
+                    }
+                });
+                
+            } catch (error) {
+                console.warn('Error setting up iframe interaction:', error);
+            }
+        }
+
+        function setupElementSelection(doc) {
+            doc.addEventListener('click', function(e) {
+                if (AppState.isPickingMode && AppState.currentPickingField) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const element = e.target;
+                    const selector = generateCSSSelector(element);
+                    
+                    // Update the field with the selected selector
+                    AppState.mappingConfig[AppState.currentPickingField] = selector;
+                    
+                    // Update UI
+                    const input = document.querySelector(`input[data-field="${AppState.currentPickingField}"]`);
+                    if (input) {
+                        input.value = selector;
+                    }
+                    
+                    updateFieldStatus(AppState.currentPickingField);
+                    exitPickingMode();
+                    
+                    showNotification(`Selected element for ${AppState.currentPickingField}: ${selector}`, 'success');
+                }
+            });
+        }
+
+        function generateCSSSelector(element) {
+            // Generate a CSS selector for the element
+            const selectors = [];
+            
+            // Try ID first
+            if (element.id) {
+                return `#${element.id}`;
+            }
+            
+            // Try class combinations
+            if (element.className && typeof element.className === 'string') {
+                const classes = element.className.trim().split(/\s+/);
+                if (classes.length > 0) {
+                    return `.${classes.join('.')}`;
+                }
+            }
+            
+            // Build path-based selector
+            let current = element;
+            while (current && current.tagName) {
+                let selector = current.tagName.toLowerCase();
+                
+                // Add class if available
+                if (current.className && typeof current.className === 'string') {
+                    const classes = current.className.trim().split(/\s+/);
+                    if (classes.length > 0) {
+                        selector += `.${classes[0]}`; // Use first class
+                    }
+                }
+                
+                selectors.unshift(selector);
+                current = current.parentElement;
+                
+                // Limit depth
+                if (selectors.length >= 3) break;
+            }
+            
+            return selectors.join(' > ');
+        }
+
+        function togglePickingMode(fieldId) {
+            if (AppState.isPickingMode && AppState.currentPickingField === fieldId) {
+                exitPickingMode();
+            } else {
+                enterPickingMode(fieldId);
+            }
+        }
+
+        function enterPickingMode(fieldId) {
+            AppState.isPickingMode = true;
+            AppState.currentPickingField = fieldId;
+            
+            // Update UI
+            document.querySelectorAll('.btn-pick').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const button = document.querySelector(`.btn-pick[data-field="${fieldId}"]`);
+            if (button) {
+                button.classList.add('active');
+                button.textContent = '✋ Click element';
+            }
+            
+            const fieldGroup = document.querySelector(`.field-group[data-field-id="${fieldId}"]`);
+            if (fieldGroup) {
+                fieldGroup.classList.add('picking');
+            }
+            
+            showNotification(`Click on an element in the page to map it to ${GOAL_FIELDS[fieldId]?.name || fieldId}`, 'info');
+        }
+
+        function exitPickingMode() {
+            AppState.isPickingMode = false;
+            AppState.currentPickingField = null;
+            
+            // Update UI
+            document.querySelectorAll('.btn-pick').forEach(btn => {
+                btn.classList.remove('active');
+                btn.textContent = '📍 Pick from page';
+            });
+            
+            document.querySelectorAll('.field-group').forEach(group => {
+                group.classList.remove('picking');
+            });
+        }
+
+        async function getFieldSuggestion(fieldId) {
+            if (!AppState.currentUrl) {
+                showNotification('Please load a page first', 'error');
+                return;
+            }
+
+            const button = document.querySelector(`.btn-ai[data-field="${fieldId}"]`);
+            const originalText = button.textContent;
+            button.textContent = '⏳ Getting...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`${AppState.apiBaseUrl}/mappingstudio/suggest`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: AppState.currentUrl,
+                        priority_fields: [fieldId]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.suggestions && data.suggestions.length > 0) {
+                    const suggestion = data.suggestions.find(s => s.field_name === fieldId);
+                    if (suggestion) {
+                        // Update the field with the suggestion
+                        AppState.mappingConfig[fieldId] = suggestion.selector;
+                        
+                        const input = document.querySelector(`input[data-field="${fieldId}"]`);
+                        if (input) {
+                            input.value = suggestion.selector;
+                        }
+                        
+                        updateFieldStatus(fieldId, suggestion);
+                        showNotification(`AI suggested selector for ${fieldId}: ${suggestion.selector}`, 'success');
+                    } else {
+                        showNotification(`No AI suggestion found for ${fieldId}`, 'warning');
+                    }
+                } else {
+                    showNotification(`AI suggestion failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error getting field suggestion:', error);
+                showNotification('Error getting AI suggestion: ' + error.message, 'error');
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function getAISuggestions() {
+            if (!AppState.currentUrl) {
+                showNotification('Please load a page first', 'error');
+                return;
+            }
+
+            const button = document.getElementById('get-suggestions-btn');
+            const originalText = button.textContent;
+            button.textContent = '⏳ Getting AI suggestions...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`${AppState.apiBaseUrl}/mappingstudio/suggest`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: AppState.currentUrl
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.suggestions) {
+                    let appliedCount = 0;
+                    
+                    data.suggestions.forEach(suggestion => {
+                        const fieldId = suggestion.field_name;
+                        if (GOAL_FIELDS[fieldId] && suggestion.selector) {
+                            // Only apply if field is currently empty
+                            if (!AppState.mappingConfig[fieldId]) {
+                                AppState.mappingConfig[fieldId] = suggestion.selector;
+                                
+                                const input = document.querySelector(`input[data-field="${fieldId}"]`);
+                                if (input) {
+                                    input.value = suggestion.selector;
+                                }
+                                
+                                updateFieldStatus(fieldId, suggestion);
+                                appliedCount++;
+                            }
+                        }
+                    });
+                    
+                    updateStats();
+                    showNotification(`Applied ${appliedCount} AI suggestions`, 'success');
+                } else {
+                    showNotification(`AI suggestions failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error getting AI suggestions:', error);
+                showNotification('Error getting AI suggestions: ' + error.message, 'error');
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function testMapping() {
+            if (!AppState.currentUrl) {
+                showNotification('Please load a page first', 'error');
+                return;
+            }
+
+            const button = document.getElementById('test-mapping-btn');
+            const originalText = button.textContent;
+            button.textContent = '⏳ Testing...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`${AppState.apiBaseUrl}/mappingstudio/preview`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: AppState.currentUrl,
+                        mapping_config: AppState.mappingConfig
+                    })
+                });
+
+                const data = await response.json();
+                AppState.lastPreviewResult = data;
+                
+                if (data.success) {
+                    updatePreviewDisplay(data);
+                    updateStats(data);
+                    showNotification(`Mapping tested! Extracted ${data.successful_fields}/${data.total_fields} fields`, 'success');
+                } else {
+                    showNotification(`Mapping test failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error testing mapping:', error);
+                showNotification('Error testing mapping: ' + error.message, 'error');
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function compareWithAI() {
+            if (!AppState.currentUrl) {
+                showNotification('Please load a page first', 'error');
+                return;
+            }
+
+            const button = document.getElementById('compare-ai-btn');
+            const originalText = button.textContent;
+            button.textContent = '⏳ Comparing...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`${AppState.apiBaseUrl}/mappingstudio/compare`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: AppState.currentUrl,
+                        mapping_config: AppState.mappingConfig
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showComparisonView(data);
+                    showNotification(`Comparison complete! ${(data.overall_similarity * 100).toFixed(1)}% similarity with AI`, 'success');
+                } else {
+                    showNotification(`Comparison failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error comparing with AI:', error);
+                showNotification('Error comparing with AI: ' + error.message, 'error');
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function updatePreviewDisplay(data) {
+            const previewElement = document.getElementById('json-preview');
+            
+            if (data.goal_json) {
+                previewElement.textContent = JSON.stringify(data.goal_json, null, 2);
+            } else if (data.extracted_data) {
+                previewElement.textContent = JSON.stringify(data.extracted_data, null, 2);
+            } else {
+                previewElement.textContent = JSON.stringify({
+                    error: 'No data extracted',
+                    message: 'Check your selectors and try again'
+                }, null, 2);
+            }
+        }
+
+        function showComparisonView(data) {
+            const comparisonView = document.getElementById('comparison-view');
+            const mappingResult = document.getElementById('mapping-result');
+            const aiResult = document.getElementById('ai-result');
+            
+            // Show extracted data from mapping vs AI
+            const mappingData = AppState.lastPreviewResult?.extracted_data || {};
+            const aiData = {}; // Extract from comparison field_comparisons
+            
+            if (data.field_comparisons) {
+                data.field_comparisons.forEach(comparison => {
+                    if (comparison.ai_value !== null) {
+                        aiData[comparison.field_name] = comparison.ai_value;
+                    }
+                });
+            }
+            
+            mappingResult.textContent = JSON.stringify(mappingData, null, 2);
+            aiResult.textContent = JSON.stringify(aiData, null, 2);
+            
+            comparisonView.style.display = 'block';
+            
+            // Scroll to comparison
+            comparisonView.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateFieldStatus(fieldId, suggestion = null) {
+            const statusElement = document.getElementById(`status-${fieldId}`);
+            const fieldGroup = document.querySelector(`.field-group[data-field-id="${fieldId}"]`);
+            const selector = AppState.mappingConfig[fieldId];
+            
+            if (selector) {
+                fieldGroup.classList.add('has-selector');
+                
+                if (suggestion) {
+                    const confidence = suggestion.confidence || 0;
+                    let confidenceClass = 'confidence-low';
+                    if (confidence > 0.8) confidenceClass = 'confidence-high';
+                    else if (confidence > 0.6) confidenceClass = 'confidence-medium';
+                    
+                    statusElement.innerHTML = `
+                        <div class="success-message">
+                            <span class="status-indicator status-success"></span>
+                            Mapped successfully
+                            <span class="confidence-badge ${confidenceClass}">
+                                ${(confidence * 100).toFixed(0)}% confidence
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    statusElement.innerHTML = `
+                        <div class="success-message">
+                            <span class="status-indicator status-info"></span>
+                            Selector defined
+                        </div>
+                    `;
+                }
+            } else {
+                fieldGroup.classList.remove('has-selector');
+                statusElement.innerHTML = '';
+            }
+        }
+
+        function updateStats(previewData = null) {
+            const fieldsCount = Object.keys(AppState.mappingConfig).filter(key => 
+                key !== 'goal' && AppState.mappingConfig[key]
+            ).length;
+            
+            document.getElementById('fields-mapped').textContent = fieldsCount;
+            
+            if (previewData) {
+                const confidence = Math.round((previewData.confidence || 0) * 100);
+                document.getElementById('confidence-score').textContent = `${confidence}%`;
+            }
+        }
+
+        function clearField(fieldId) {
+            delete AppState.mappingConfig[fieldId];
+            
+            const input = document.querySelector(`input[data-field="${fieldId}"]`);
+            if (input) {
+                input.value = '';
+            }
+            
+            updateFieldStatus(fieldId);
+            updateStats();
+            
+            showNotification(`Cleared mapping for ${GOAL_FIELDS[fieldId]?.name || fieldId}`, 'info');
+        }
+
+        async function saveSchema() {
+            if (!AppState.currentUrl || Object.keys(AppState.mappingConfig).length <= 1) {
+                showNotification('Please add some field mappings before saving', 'error');
+                return;
+            }
+
+            const siteId = prompt('Enter a site identifier (e.g., "custom_site"):');
+            if (!siteId) return;
+
+            const button = document.getElementById('save-btn');
+            const originalText = button.textContent;
+            button.textContent = '⏳ Saving...';
+            button.disabled = true;
+
+            try {
+                const schemaData = {
+                    ...AppState.mappingConfig,
+                    _metadata: {
+                        site: new URL(AppState.currentUrl).hostname,
+                        description: `Custom mapping created in visual editor`,
+                        version: '1.0.0',
+                        created_with: 'RanomMappingStudio Visual Editor',
+                        test_url: AppState.currentUrl
+                    }
+                };
+
+                const response = await fetch(`${AppState.apiBaseUrl}/mappingstudio/schema/${siteId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        site_id: siteId,
+                        schema_data: schemaData,
+                        created_by: 'visual_editor'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`Schema saved successfully as '${siteId}'!`, 'success');
+                } else {
+                    showNotification(`Failed to save schema: ${data.error || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error saving schema:', error);
+                showNotification('Error saving schema: ' + error.message, 'error');
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Trigger animation
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+
+        // Initialize stats
+        updateStats();
+        
+        console.log('🎨 RanomMappingStudio Visual Editor initialized successfully!');
+    </script>
+</body>
+</html> 
